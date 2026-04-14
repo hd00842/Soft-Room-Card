@@ -6,6 +6,10 @@ Card multiroom cho Home Assistant (`custom:soft-room-card`).
 
 GitHub: https://github.com/hd00842/Soft-Room-Card.git
 
+## Preview
+
+![Soft Room Card Preview](assets/room-card-preview.png)
+
 ## Cài đặt
 
 ### Cách 1: HACS (khuyến nghị)
