@@ -84,6 +84,19 @@ var THEME_PRESETS = {
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
+function pickColor(value, fallback) {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  if (typeof CSS !== "undefined" && typeof CSS.supports === "function") {
+    return CSS.supports("color", trimmed) ? trimmed : fallback;
+  }
+  return trimmed;
+}
 function getEntityDomain(entityId = "") {
   return entityId.includes(".") ? entityId.split(".")[0] : "";
 }
@@ -167,14 +180,14 @@ function createStubConfig() {
 function resolveTheme(config) {
   const preset = config.theme && config.theme !== "custom" ? THEME_PRESETS[config.theme] : THEME_PRESETS.pastel;
   return {
-    background: config.background || preset.background,
-    surface: config.surface_color || preset.surface,
-    border: config.border_color || preset.border,
-    tabBackground: config.tab_background_color || "rgba(255, 235, 233, 0.42)",
-    text: config.text_color || preset.text,
-    mutedText: config.muted_text_color || preset.mutedText,
-    stateText: config.state_text_color || preset.stateText,
-    accent: config.accent_color || preset.accent
+    background: pickColor(config.background, preset.background),
+    surface: pickColor(config.surface_color, preset.surface),
+    border: pickColor(config.border_color, preset.border),
+    tabBackground: pickColor(config.tab_background_color, "rgba(255, 235, 233, 0.42)"),
+    text: pickColor(config.text_color, preset.text),
+    mutedText: pickColor(config.muted_text_color, preset.mutedText),
+    stateText: pickColor(config.state_text_color, preset.stateText),
+    accent: pickColor(config.accent_color, preset.accent)
   };
 }
 function ensureRoom(room) {
@@ -1134,14 +1147,7 @@ var SoftRoomCard = class extends i4 {
     if (!this._config) {
       return 1;
     }
-    let columns = Math.max(1, getEffectiveColumns(room, this._config));
-    if (this._isCompactViewport) {
-      return 1;
-    }
-    if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 900px)")?.matches) {
-      columns = Math.min(columns, 2);
-    }
-    return Math.max(1, columns);
+    return Math.max(1, getEffectiveColumns(room, this._config));
   }
   _bindViewportListener() {
     if (typeof window === "undefined" || !window.matchMedia) {
@@ -1262,9 +1268,6 @@ var SoftRoomCard = class extends i4 {
       return "scroll";
     }
     const layout = getEffectiveLayout(room, this._config);
-    if (this._isCompactViewport) {
-      return "scroll";
-    }
     return layout;
   }
   _setActiveRoom(index) {
@@ -1552,7 +1555,7 @@ SoftRoomCard.styles = i`
     }
 
     ha-card {
-      background: transparent;
+      background: var(--soft-room-background);
       position: relative;
       border: none;
       box-shadow: none;
@@ -1613,7 +1616,7 @@ SoftRoomCard.styles = i`
       min-height: 0;
       padding: 0;
       border-radius: 24px;
-      background: transparent;
+      background: var(--tab-bg-color);
       scroll-snap-type: x proximity;
       scrollbar-width: none;
       -ms-overflow-style: none;
@@ -1629,7 +1632,7 @@ SoftRoomCard.styles = i`
 
     .room-tab {
       flex: 1 1 0;
-      border: 1px solid rgba(255, 255, 255, 0.52);
+      border: 1px solid var(--soft-room-border);
       border-radius: 20px;
       min-height: 44px;
       min-width: 60px;
@@ -1827,8 +1830,12 @@ SoftRoomCard.styles = i`
       border-radius: 18px;
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08)),
-        linear-gradient(135deg, rgba(255, 224, 213, 0.78) 0%, rgba(248, 208, 215, 0.66) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.38);
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--soft-room-surface) 92%, #fff 8%) 0%,
+          color-mix(in srgb, var(--soft-room-surface) 74%, #f8d0d7 26%) 100%
+        );
+      border: 1px solid var(--soft-room-border);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.34),
         0 4px 10px rgba(102, 72, 82, 0.05);
@@ -1873,10 +1880,14 @@ SoftRoomCard.styles = i`
     }
 
     .tile--on {
-      border-color: rgba(255, 255, 255, 0.44);
+      border-color: var(--soft-room-border);
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.1)),
-        linear-gradient(135deg, rgba(255, 214, 194, 0.9) 0%, rgba(248, 198, 206, 0.8) 100%);
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--soft-room-accent) 26%, var(--soft-room-surface) 74%) 0%,
+          color-mix(in srgb, var(--soft-room-accent) 38%, var(--soft-room-surface) 62%) 100%
+        );
     }
 
     .tile-top {
@@ -1919,7 +1930,7 @@ SoftRoomCard.styles = i`
       display: block;
       flex: 0 0 auto;
       min-width: max-content;
-      color: #121212;
+      color: var(--soft-room-state);
       font-size: 14px;
       line-height: 1;
       font-weight: 700;
@@ -1944,7 +1955,7 @@ SoftRoomCard.styles = i`
     }
 
     .secondary {
-      color: rgba(34, 31, 36, 0.7);
+      color: var(--soft-room-muted);
       font-size: 12px;
       line-height: 1.2;
       font-weight: 500;
@@ -1954,13 +1965,6 @@ SoftRoomCard.styles = i`
       position: relative;
       z-index: 1;
       min-width: 0;
-    }
-
-    @media (max-width: 900px) {
-      .tiles--grid,
-      .tiles--scroll.tiles--wrapped {
-        grid-template-columns: repeat(2, minmax(0, min(100%, var(--tile-width, 160px))));
-      }
     }
 
     @media (max-width: 560px) {
@@ -1990,17 +1994,7 @@ SoftRoomCard.styles = i`
       }
 
       .tiles--scroll {
-        grid-auto-columns: min(42vw, var(--tile-width, 160px));
         padding-bottom: 0;
-      }
-
-      .tiles--scroll.tiles--wrapped {
-        grid-auto-columns: unset;
-        grid-template-columns: repeat(2, minmax(0, min(100%, var(--tile-width, 160px))));
-      }
-
-      .tiles--grid {
-        grid-template-columns: repeat(2, minmax(0, min(100%, var(--tile-width, 160px))));
       }
 
       .tile {
@@ -2032,17 +2026,6 @@ SoftRoomCard.styles = i`
 
       .secondary {
         font-size: 11px;
-      }
-    }
-
-    @media (max-width: 340px) {
-      .tiles--grid,
-      .tiles--scroll.tiles--wrapped {
-        grid-template-columns: minmax(0, min(100%, var(--tile-width, 160px)));
-      }
-
-      .tiles--scroll {
-        grid-auto-columns: min(76vw, var(--tile-width, 160px));
       }
     }
 
